@@ -1,5 +1,5 @@
 # Multi-stage build for Railway
-FROM maven:3.9.4-openjdk-17 AS build
+FROM maven:latest AS build
 
 # Set working directory
 WORKDIR /app
