@@ -1,28 +1,31 @@
-# Use OpenJDK 17 as base image
-FROM openjdk:17-jdk-slim
+# Multi-stage build for Railway
+FROM maven:3.9.4-openjdk-17 AS build
 
 # Set working directory
 WORKDIR /app
 
-# Copy Maven wrapper and pom.xml
-COPY mvnw .
-COPY .mvn .mvn
+# Copy pom.xml and download dependencies
 COPY pom.xml .
+RUN mvn dependency:go-offline -B
 
-# Make mvnw executable
-RUN chmod +x ./mvnw
-
-# Download dependencies
-RUN ./mvnw dependency:go-offline -B
-
-# Copy source code
+# Copy source code and build
 COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Build the application
-RUN ./mvnw clean package -DskipTests
+# Runtime stage
+FROM openjdk:17-jre-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy jar from build stage
+COPY --from=build /app/target/sewacam.jar app.jar
+
+# Create upload directory
+RUN mkdir -p /app/upload
 
 # Expose port
 EXPOSE 8080
 
 # Run the application
-CMD ["java", "-jar", "target/sewacam.jar"]
+CMD ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
